@@ -16,20 +16,20 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
+# ✅ Name aus Spalte 3+4 oder (Fallback) 6+7
 def extract_name(row):
-    if pd.notna(row[3]) and pd.notna(row[4]):
-        return f"{row[3]} {row[4]}"
-    elif pd.notna(row[6]) and pd.notna(row[7]):
-        return f"{row[6]} {row[7]}"
+    nachname = row[3] if pd.notna(row[3]) else row[6]
+    vorname  = row[4] if pd.notna(row[4]) else row[7]
+    if pd.notna(nachname) and pd.notna(vorname):
+        return f"{nachname} {vorname}"
     return None
 
-# ✅ Korrekte KW-Berechnung mit Sonntag als Wochenbeginn
+# ✅ Sonntag als Wochenbeginn + korrekte Jahreszuordnung
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
-        kw = int(dt.strftime("%U")) + 1  # %U: Sonntag als Wochenstart, +1 weil es bei 0 startet
+        kw = int(dt.strftime("%U")) + 1  # %U = Sonntag als Wochenstart
         jahr = dt.year
-        # Sonderfall: Anfang Januar mit hoher KW → eigentlich noch Vorjahr
         if dt.month == 1 and kw >= 52:
             jahr -= 1
         return kw, jahr
@@ -81,7 +81,7 @@ if uploaded_files and name_query:
             for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                 group = group.reset_index(drop=True)
 
-                # ✅ Kein .0 mehr, int() erzwingt Ganzzahlen
+                # Titelzeile
                 ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                 cell = ws.cell(row=start_row, column=1)
@@ -107,10 +107,10 @@ if uploaded_files and name_query:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                # Leere Zeile zwischen KWs
+                # Leere Zeile zwischen den KWs
                 start_row += 1
 
-            # Autobreite auf 150 % Inhalt
+            # Autobreite
             for col in ws.columns:
                 max_length = 0
                 col_letter = get_column_letter(col[0].column)
