@@ -78,8 +78,8 @@ if uploaded_files and name_query:
             for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                 group = group.reset_index(drop=True)
 
-                # KW-Jahr-Blocküberschrift
-                ws.cell(row=start_row, column=1, value=f"KW {kw} ({jahr})")
+                # 🛠️ Fix: int() für KW und Jahr, damit keine ".0" steht
+                ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                 cell = ws.cell(row=start_row, column=1)
                 cell.font = Font(bold=True, size=14)
