@@ -41,7 +41,7 @@ if uploaded_files and name_query:
             df["Name"] = df.apply(extract_name, axis=1)
             df["Datum"] = pd.to_datetime(df[14], errors='coerce')
             df["KW"] = df["Datum"].apply(get_kw)
-            df["Tour"] = df[15]  # Tournummer ist in Spalte 15
+            df["Tour"] = df[15]  # Tournummer aus Spalte 15
             df["Uhrzeit"] = df[8]
             df["LKW"] = df[11]
 
@@ -54,13 +54,16 @@ if uploaded_files and name_query:
 
     if all_data:
         result_df = pd.concat(all_data)
+
+        # Sortierung nach echter Zeit
         result_df.sort_values(by=["KW", "Datum", "Name"], inplace=True)
 
-        # Wochentag + deutsches Datumsformat
+        # Wochentag + deutsches Datumsformat für Anzeige
         result_df["Wochentag"] = result_df["Datum"].dt.day_name().map(wochentage_deutsch)
         result_df["Datum_formatiert"] = result_df["Datum"].dt.strftime('%d.%m.%Y')
         result_df["Datum_komplett"] = result_df["Wochentag"] + ", " + result_df["Datum_formatiert"]
-        result_df.drop(columns=["Datum", "Wochentag", "Datum_formatiert"], inplace=True)
+
+        # Anzeige-Spalten (Datum_komplett statt Datum)
         result_df = result_df[["KW", "Datum_komplett", "Name", "Tour", "Uhrzeit", "LKW"]]
 
         # Excel-Ausgabe
@@ -71,7 +74,7 @@ if uploaded_files and name_query:
             wb = writer.book
 
             for kw, group in result_df.groupby("KW"):
-                group = group.sort_values(by="Datum_komplett")
+                group = group.reset_index(drop=True)
                 ws = writer.book.create_sheet(title=sheet_name) if writer.sheets == {} else writer.sheets[sheet_name]
 
                 # KW-Titelzeile
