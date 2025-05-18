@@ -15,18 +15,19 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# ✅ Name aus 3+4 oder 6+7, alle Inhalte als String behandelt
+# ✅ Immer beide Seiten prüfen – Links bevorzugt, sonst rechts
 def extract_name(row):
-    try:
-        if pd.notna(row[3]) and pd.notna(row[4]):
-            return f"{str(row[3]).strip()} {str(row[4]).strip()}"
-        elif pd.notna(row[6]) and pd.notna(row[7]):
-            return f"{str(row[6]).strip()} {str(row[7]).strip()}"
-    except:
-        pass
-    return None
+    name_links = None
+    name_rechts = None
 
-# ✅ KW mit Sonntag als Wochenstart (%U)
+    if pd.notna(row[3]) and pd.notna(row[4]):
+        name_links = f"{str(row[3]).strip()} {str(row[4]).strip()}"
+    if pd.notna(row[6]) and pd.notna(row[7]):
+        name_rechts = f"{str(row[6]).strip()} {str(row[7]).strip()}"
+    
+    return name_links or name_rechts
+
+# ✅ KW mit Sonntag als Start (%U)
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
@@ -38,7 +39,7 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
-# ----------------- Hauptbereich -----------------
+# ----------------- Hauptlogik -----------------
 if uploaded_files:
     all_data = []
     alle_namen = set()
