@@ -15,15 +15,18 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# ✅ Name aus 3+4 oder alternativ 6+7, robust gegen Nicht-Strings
+# ✅ Name aus 3+4 oder 6+7, alle Inhalte als String behandelt
 def extract_name(row):
-    if pd.notna(row[3]) and pd.notna(row[4]):
-        return f"{str(row[3]).strip()} {str(row[4]).strip()}"
-    elif pd.notna(row[6]) and pd.notna(row[7]):
-        return f"{str(row[6]).strip()} {str(row[7]).strip()}"
+    try:
+        if pd.notna(row[3]) and pd.notna(row[4]):
+            return f"{str(row[3]).strip()} {str(row[4]).strip()}"
+        elif pd.notna(row[6]) and pd.notna(row[7]):
+            return f"{str(row[6]).strip()} {str(row[7]).strip()}"
+    except:
+        pass
     return None
 
-# ✅ KW mit Sonntag als Wochenstart + korrektes Jahr
+# ✅ KW mit Sonntag als Wochenstart (%U)
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
@@ -35,7 +38,7 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
-# ----------------- Streamlit Hauptteil -----------------
+# ----------------- Hauptbereich -----------------
 if uploaded_files:
     all_data = []
     alle_namen = set()
@@ -59,7 +62,6 @@ if uploaded_files:
             st.error(f"Fehler beim Verarbeiten von {file.name}: {e}")
 
     if alle_namen:
-        # Sortiere alphabetisch nach Nachname
         def sort_nachname(name):
             return name.split()[0].lower() if isinstance(name, str) else ""
 
