@@ -44,12 +44,12 @@ def format_uhrzeit(val):
             stunden = int(val * 24)
             minuten = int((val * 1440) % 60)
             return f"{stunden:02d}:{minuten:02d}"
-        elif isinstance(val, pd.Timestamp):
+        elif isinstance(val, (datetime.datetime, pd.Timestamp)):
             return val.strftime("%H:%M")
         elif isinstance(val, datetime.time):
             return val.strftime("%H:%M")
-    except:
-        pass
+    except Exception as e:
+        print("Fehler bei Uhrzeit:", val, e)
     return "n. A."
 
 def extract_entries_both_sides(row):
