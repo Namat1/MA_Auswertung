@@ -4,7 +4,7 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – beide Seiten, sortiert nach Datum")
+st.title("Tourenauswertung – Uhrzeit wie früher, sortiert & farbig")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
 fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth')").strip().lower()
@@ -26,28 +26,19 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
+# ✅ Uhrzeit wie früher
 def format_uhrzeit(val):
-    if pd.isna(val):
-        return "n. A."
-    if isinstance(val, pd.Timestamp):
-        if val == pd.Timestamp("1900-01-01 00:00:00"):
-            return "00:00"
-        return val.strftime("%H:%M")
-    if isinstance(val, (float, int)):
-        try:
+    try:
+        if isinstance(val, str) and ":" in val:
+            return val.strip()[:5]
+        if isinstance(val, (float, int)):
             stunden = int(val * 24)
             minuten = int((val * 1440) % 60)
             return f"{stunden:02d}:{minuten:02d}"
-        except:
-            return "n. A."
-    if isinstance(val, str):
-        if ":" in val:
-            try:
-                parts = val.strip().split(":")
-                return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
-            except:
-                return "n. A."
-        return val.strip()
+        if isinstance(val, pd.Timestamp):
+            return val.strftime("%H:%M")
+    except:
+        pass
     return "n. A."
 
 def extract_entries_both_sides(row):
