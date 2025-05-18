@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
+import datetime
 from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – Uhrzeit wie früher, sortiert & farbig")
+st.title("Tourenauswertung – mit funktionierender Uhrzeitdarstellung")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
 fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth')").strip().lower()
@@ -26,7 +27,7 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
-# ✅ Uhrzeit wie früher
+# ✅ Uhrzeit-Funktion mit datetime.time Unterstützung
 def format_uhrzeit(val):
     try:
         if isinstance(val, str) and ":" in val:
@@ -36,6 +37,8 @@ def format_uhrzeit(val):
             minuten = int((val * 1440) % 60)
             return f"{stunden:02d}:{minuten:02d}"
         if isinstance(val, pd.Timestamp):
+            return val.strftime("%H:%M")
+        if isinstance(val, datetime.time):
             return val.strftime("%H:%M")
     except:
         pass
