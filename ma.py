@@ -1,3 +1,4 @@
+# Alle bisherigen Imports
 import streamlit as st
 import pandas as pd
 import datetime
@@ -15,7 +16,6 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# Rahmenstil definieren
 thin_border = Border(
     left=Side(style="thin"),
     right=Side(style="thin"),
@@ -56,9 +56,8 @@ def format_uhrzeit(val):
             return val.strftime("%H:%M")
         elif isinstance(val, datetime.time):
             return val.strftime("%H:%M")
-    except Exception as e:
-        print("Fehler bei Uhrzeit:", val, e)
-    return "n. A."
+    except:
+        return "n. A."
 
 def extract_entries_both_sides(row):
     eintraege = []
@@ -154,15 +153,18 @@ if uploaded_files:
 
                     for row in group.itertuples(index=False):
                         values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
+                        is_samstag = "Samstag" in str(row.Datum)
                         for col_num, value in enumerate(values, 1):
                             cell = ws.cell(row=start_row, column=col_num, value=value)
                             cell.alignment = Alignment(horizontal="left", vertical="center")
                             cell.border = thin_border
+                            if is_samstag:
+                                cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
                         start_row += 1
 
                     start_row += 1
 
-                # Rechte Auswertung: Tage-Zeilen
+                # Rechte Auswertung (Tage)
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -185,7 +187,7 @@ if uploaded_files:
                     cell_label.border = thin_border
                     cell_value.border = thin_border
 
-                # Tourenübersicht (ohne Urlaub, Krank, Ausgleich)
+                # Tourenübersicht
                 touren_start_row = 10 + len(summary_labels) + 2
                 ws.cell(row=touren_start_row, column=summary_col_label, value="Tourenübersicht:")
                 ws.cell(row=touren_start_row, column=summary_col_label).font = Font(bold=True, size=12)
