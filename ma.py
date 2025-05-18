@@ -127,7 +127,6 @@ if uploaded_files:
                 for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                     group = group.reset_index(drop=True)
 
-                    # KW-Zeile
                     ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                     ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                     cell = ws.cell(row=start_row, column=1)
@@ -136,7 +135,6 @@ if uploaded_files:
                     cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
                     start_row += 1
 
-                    # Kopfzeile
                     header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
                     for col_num, column_title in enumerate(header, 1):
                         cell = ws.cell(row=start_row, column=col_num, value=column_title)
@@ -145,7 +143,6 @@ if uploaded_files:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                    # Datenzeilen
                     for row in group.itertuples(index=False):
                         values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
                         for col_num, value in enumerate(values, 1):
@@ -153,9 +150,9 @@ if uploaded_files:
                             cell.alignment = Alignment(horizontal="left", vertical="center")
                         start_row += 1
 
-                    start_row += 1  # Abstand zur nächsten Woche
+                    start_row += 1
 
-                # Jahresauswertung rechts neben der Tabelle (Spalte I)
+                # Rechte Auswertung
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -176,7 +173,27 @@ if uploaded_files:
                     label_cell.alignment = Alignment(horizontal="left", vertical="center")
                     value_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                # Spaltenbreiten automatisch anpassen
+                # Tourenübersicht
+                next_row = summary_start_row + len(summary_labels) + 2
+                ws.cell(row=next_row, column=summary_col_label, value="Tourenübersicht:")
+                ws.cell(row=next_row, column=summary_col_label).font = Font(bold=True)
+                next_row += 1
+
+                touren_zaehler = (
+                    df_final["Tour"]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .value_counts()
+                    .sort_index()
+                )
+
+                for tour, count in touren_zaehler.items():
+                    ws.cell(row=next_row, column=summary_col_label, value=tour)
+                    ws.cell(row=next_row, column=summary_col_value, value=f"{count}x")
+                    next_row += 1
+
+                # Auto-Breite
                 for col in ws.columns:
                     max_length = 0
                     col_letter = get_column_letter(col[0].column)
