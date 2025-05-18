@@ -5,7 +5,7 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – mit Fahrersuche & exakter Auswahl")
+st.title("Tourenauswertung – mit Fahrersuche & sauberem Layout")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
 
@@ -99,13 +99,12 @@ if uploaded_files:
             ausgewaehlter_name = st.selectbox("Passenden Fahrer auswählen", passende_namen)
             df_final = df_final[df_final["Name"] == ausgewaehlter_name]
         else:
-            if fahrersuche:
-                st.warning("Kein passender Name gefunden.")
-            df_final = df_final.iloc[0:0]  # leere Auswahl
+            df_final = df_final.iloc[0:0]
 
-        if df_final.empty:
-            st.warning("Kein Eintrag für diesen Fahrer.")
-        else:
+        if df_final.empty and fahrersuche and passende_namen:
+            st.warning("Für diesen Fahrer wurden keine Touren gefunden.")
+
+        if not df_final.empty:
             df_final.sort_values(by=["Jahr", "KW", "Datum_sortierbar"], inplace=True)
 
             output = BytesIO()
