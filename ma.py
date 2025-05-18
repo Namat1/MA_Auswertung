@@ -152,7 +152,7 @@ if uploaded_files:
 
                     start_row += 1
 
-                # Rechte Auswertung: Jahreswerte
+                # Rechte Auswertung
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -173,10 +173,10 @@ if uploaded_files:
                     label_cell.alignment = Alignment(horizontal="left", vertical="center")
                     value_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                # Tourenübersicht ab fixer Zeile
+                # Tourenübersicht – schön formatiert & ohne Krank/Urlaub/Ausgleich
                 touren_start_row = 10 + len(summary_labels) + 2
                 ws.cell(row=touren_start_row, column=summary_col_label, value="Tourenübersicht:")
-                ws.cell(row=touren_start_row, column=summary_col_label).font = Font(bold=True)
+                ws.cell(row=touren_start_row, column=summary_col_label).font = Font(bold=True, size=12)
                 touren_start_row += 1
 
                 touren_zaehler = (
@@ -184,13 +184,20 @@ if uploaded_files:
                     .dropna()
                     .astype(str)
                     .str.strip()
+                    .loc[lambda s: ~s.str.lower().str.contains("krank|urlaub|ausgleich")]
                     .value_counts()
                     .sort_index()
                 )
 
                 for tour, count in touren_zaehler.items():
-                    ws.cell(row=touren_start_row, column=summary_col_label, value=tour)
-                    ws.cell(row=touren_start_row, column=summary_col_value, value=f"{count}x")
+                    cell_name = ws.cell(row=touren_start_row, column=summary_col_label, value=tour)
+                    cell_count = ws.cell(row=touren_start_row, column=summary_col_value, value=f"{count}x")
+                    cell_name.alignment = Alignment(horizontal="left", vertical="center")
+                    cell_count.alignment = Alignment(horizontal="center", vertical="center")
+                    cell_name.font = Font(bold=False)
+                    cell_count.font = Font(bold=True)
+                    cell_name.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                    cell_count.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
                     touren_start_row += 1
 
                 # Auto-Breite
