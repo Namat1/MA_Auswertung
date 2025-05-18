@@ -87,6 +87,7 @@ if uploaded_files:
                 for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                     group = group.reset_index(drop=True)
 
+                    # KW-Überschrift
                     ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                     ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                     cell = ws.cell(row=start_row, column=1)
@@ -95,6 +96,7 @@ if uploaded_files:
                     cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
                     start_row += 1
 
+                    # Kopfzeile
                     header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
                     for col_num, column_title in enumerate(header, 1):
                         cell = ws.cell(row=start_row, column=col_num, value=column_title)
@@ -103,6 +105,7 @@ if uploaded_files:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
+                    # Datenzeilen
                     for row in group.itertuples(index=False):
                         values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
                         for col_num, value in enumerate(values, 1):
@@ -121,9 +124,12 @@ if uploaded_files:
                             max_length = max(max_length, len(str(cell.value)))
                     ws.column_dimensions[col_letter].width = int(max_length * 1.5)
 
+            # Dateiname mit Fahrernamen oder Fallback
+            file_name = f"{fahrersuche.capitalize() if fahrersuche else 'Touren'}_Auswertung.xlsx"
+
             output.seek(0)
             st.success("Auswertung abgeschlossen.")
             st.download_button("Excel-Datei herunterladen",
                                output,
-                               file_name="touren_auswertung.xlsx",
+                               file_name=file_name,
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
