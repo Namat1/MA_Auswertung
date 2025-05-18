@@ -5,7 +5,7 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – mit Fahrersuche & sauberem Layout")
+st.title("Fahrerauswertung - Einzeln")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
 
