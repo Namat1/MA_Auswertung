@@ -28,15 +28,25 @@ def get_kw_and_year_sunday_start(datum):
 
 def format_uhrzeit(val):
     try:
-        if isinstance(val, str) and ":" in val:
-            return val.strip()[:5]
-        if isinstance(val, (float, int)):
+        if pd.isna(val):
+            return "n. A."
+        if isinstance(val, str):
+            val = val.strip()
+            if val in ["0:00", "00:00", "00:00:00"]:
+                return "00:00"
+            if ":" in val:
+                parts = val.split(":")
+                if len(parts) >= 2 and all(p.isdigit() for p in parts[:2]):
+                    return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
+        elif isinstance(val, (float, int)):
+            if val == 0:
+                return "00:00"
             stunden = int(val * 24)
             minuten = int((val * 1440) % 60)
             return f"{stunden:02d}:{minuten:02d}"
-        if isinstance(val, pd.Timestamp):
+        elif isinstance(val, pd.Timestamp):
             return val.strftime("%H:%M")
-        if isinstance(val, datetime.time):
+        elif isinstance(val, datetime.time):
             return val.strftime("%H:%M")
     except:
         pass
