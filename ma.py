@@ -4,12 +4,12 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – nach KW, Fahrername & Tour")
+st.title("Tourenauswertung – nach KW (Sonntag), Name & Tour")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
 name_query = st.text_input("Gesuchten Fahrer eingeben (Teil von Vor- oder Nachname):")
 
-# Deutsche Wochentage manuell
+# Deutsche Wochentage
 wochentage_deutsch = {
     "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
     "Thursday": "Donnerstag", "Friday": "Freitag",
@@ -23,9 +23,13 @@ def extract_name(row):
         return f"{row[6]} {row[7]}"
     return None
 
-def get_kw(datum):
+# KW-Berechnung mit Sonntag als Wochenstart
+def get_kw_sonntag_start(datum):
     try:
-        return pd.to_datetime(datum).isocalendar().week
+        dt = pd.to_datetime(datum)
+        # Sonntag als Start: Rückverschiebung bis Samstag
+        verschoben = dt - pd.DateOffset(days=(dt.weekday() + 1) % 7)
+        return verschoben.isocalendar().week
     except:
         return None
 
@@ -35,13 +39,13 @@ if uploaded_files and name_query:
     for file in uploaded_files:
         try:
             df = pd.read_excel(file, sheet_name="Touren", header=None)
-            df = df.iloc[5:]  # ab Zeile 6
+            df = df.iloc[5:]  # Daten ab Zeile 6
             df = df.reset_index(drop=True)
 
             df["Name"] = df.apply(extract_name, axis=1)
             df["Datum"] = pd.to_datetime(df[14], errors='coerce')
-            df["KW"] = df["Datum"].apply(get_kw)
-            df["Tour"] = df[15]  # Tournummer aus Spalte 15
+            df["KW"] = df["Datum"].apply(get_kw_sonntag_start)
+            df["Tour"] = df[15]  # Tour aus Spalte 15
             df["Uhrzeit"] = df[8]
             df["LKW"] = df[11]
 
@@ -54,30 +58,25 @@ if uploaded_files and name_query:
 
     if all_data:
         result_df = pd.concat(all_data)
-
-        # Sortierung nach echter Zeit
         result_df.sort_values(by=["KW", "Datum", "Name"], inplace=True)
 
-        # Wochentag + deutsches Datumsformat für Anzeige
+        # Formatierung für deutsche Anzeige
         result_df["Wochentag"] = result_df["Datum"].dt.day_name().map(wochentage_deutsch)
         result_df["Datum_formatiert"] = result_df["Datum"].dt.strftime('%d.%m.%Y')
         result_df["Datum_komplett"] = result_df["Wochentag"] + ", " + result_df["Datum_formatiert"]
-
-        # Anzeige-Spalten (Datum_komplett statt Datum)
         result_df = result_df[["KW", "Datum_komplett", "Name", "Tour", "Uhrzeit", "LKW"]]
 
-        # Excel-Ausgabe
+        # Export mit Layout
         output = BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             sheet_name = "Alle_KWs"
             start_row = 1
-            wb = writer.book
 
             for kw, group in result_df.groupby("KW"):
                 group = group.reset_index(drop=True)
                 ws = writer.book.create_sheet(title=sheet_name) if writer.sheets == {} else writer.sheets[sheet_name]
 
-                # KW-Titelzeile
+                # KW-Überschrift
                 ws.cell(row=start_row, column=1, value=f"KW {kw}")
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=6)
                 title_cell = ws.cell(row=start_row, column=1)
@@ -101,10 +100,10 @@ if uploaded_files and name_query:
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                     start_row += 1
 
-                # Leerzeile zwischen KW-Blöcken
+                # Leere Zeile zwischen den KWs
                 start_row += 1
 
-            # Spaltenbreiten auf 150 % Inhalt
+            # Autobreite (150 %)
             for col in ws.columns:
                 max_length = 0
                 col_letter = get_column_letter(col[0].column)
