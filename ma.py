@@ -16,15 +16,15 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# ✅ Name aus Spalte 5+4 oder 8+7 (Nachname = 5/8, Vorname = 4/7)
+# ✅ Name aus Spalte 3+4 oder alternativ 6+7
 def extract_name(row):
-    vorname = row[4] if pd.notna(row[4]) else row[7]
-    nachname = row[5] if pd.notna(row[5]) else row[8]
-    if pd.notna(nachname) and pd.notna(vorname):
-        return f"{nachname} {vorname}"
+    if pd.notna(row[3]) and pd.notna(row[4]) and isinstance(row[3], str) and isinstance(row[4], str):
+        return f"{row[3].strip()} {row[4].strip()}"
+    elif pd.notna(row[6]) and pd.notna(row[7]) and isinstance(row[6], str) and isinstance(row[7], str):
+        return f"{row[6].strip()} {row[7].strip()}"
     return None
 
-# ✅ KW mit Sonntag als Wochenstart (%U) und korrektes Jahr
+# ✅ Sonntag als Wochenanfang, Jahr korrekt
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
@@ -63,7 +63,6 @@ if uploaded_files and name_query:
         result_df = pd.concat(all_data)
         result_df.sort_values(by=["Jahr", "KW", "Datum"], inplace=True)
 
-        # Deutsches Datum mit Wochentag
         result_df["Wochentag"] = result_df["Datum"].dt.day_name().map(wochentage_deutsch)
         result_df["Datum_formatiert"] = result_df["Datum"].dt.strftime('%d.%m.%Y')
         result_df["Datum_komplett"] = result_df["Wochentag"] + ", " + result_df["Datum_formatiert"]
