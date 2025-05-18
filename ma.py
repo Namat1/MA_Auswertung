@@ -41,6 +41,12 @@ def format_uhrzeit(val):
         except:
             return "n. A."
     if isinstance(val, str):
+        if ":" in val:
+            try:
+                parts = val.strip().split(":")
+                return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
+            except:
+                return "n. A."
         return val.strip()
     return "n. A."
 
