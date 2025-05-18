@@ -5,10 +5,9 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – mit funktionierender Uhrzeitdarstellung")
+st.title("Tourenauswertung – mit Fahrersuche & exakter Auswahl")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
-fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth')").strip().lower()
 
 wochentage_deutsch = {
     "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
@@ -27,7 +26,6 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
-# ✅ Uhrzeit-Funktion mit datetime.time Unterstützung
 def format_uhrzeit(val):
     try:
         if isinstance(val, str) and ":" in val:
@@ -88,8 +86,22 @@ if uploaded_files:
     if eintraege_gesamt:
         df_final = pd.DataFrame(eintraege_gesamt)
 
+        fahrersuche = st.text_input("Nach Namen suchen (z. B. 'müller')").strip().lower()
+        passende_namen = []
+
         if fahrersuche:
-            df_final = df_final[df_final["Name"].str.lower().str.contains(fahrersuche)]
+            passende_namen = sorted(
+                [name for name in df_final["Name"].dropna().unique()
+                 if fahrersuche in name.lower()]
+            )
+
+        if passende_namen:
+            ausgewaehlter_name = st.selectbox("Passenden Fahrer auswählen", passende_namen)
+            df_final = df_final[df_final["Name"] == ausgewaehlter_name]
+        else:
+            if fahrersuche:
+                st.warning("Kein passender Name gefunden.")
+            df_final = df_final.iloc[0:0]  # leere Auswahl
 
         if df_final.empty:
             st.warning("Kein Eintrag für diesen Fahrer.")
@@ -139,7 +151,8 @@ if uploaded_files:
                             max_length = max(max_length, len(str(cell.value)))
                     ws.column_dimensions[col_letter].width = int(max_length * 1.5)
 
-            file_name = f"{fahrersuche.capitalize() if fahrersuche else 'Touren'}_Auswertung.xlsx"
+            name_sicher = ausgewaehlter_name.replace(" ", "_") if passende_namen else "Touren"
+            file_name = f"{name_sicher}_Auswertung.xlsx"
 
             output.seek(0)
             st.success("Auswertung abgeschlossen.")
