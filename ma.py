@@ -124,8 +124,6 @@ if uploaded_files:
                 writer.sheets[sheet] = ws
 
                 start_row = 1
-
-                # Tabellen-Header
                 header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
                 for col_num, column_title in enumerate(header, 1):
                     cell = ws.cell(row=start_row, column=col_num, value=column_title)
@@ -134,7 +132,6 @@ if uploaded_files:
                     cell.alignment = Alignment(horizontal="left", vertical="center")
                 start_row += 1
 
-                # Tabelleninhalte
                 for row in df_final.itertuples(index=False):
                     values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
                     for col_num, value in enumerate(values, 1):
@@ -142,7 +139,7 @@ if uploaded_files:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                # Jahresauswertung in separater Tabelle (rechts)
+                # Jahresauswertung in separater Tabelle (rechts neben Haupttabelle)
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -150,15 +147,17 @@ if uploaded_files:
                 summary_values = [krank_count, urlaub_count, arbeit_count]
 
                 summary_start_row = 2
-                summary_col_label = 9   # Spalte I
+                summary_col_label = 9  # Spalte I
                 summary_col_value = 10  # Spalte J
 
                 for idx, (label, value) in enumerate(zip(summary_labels, summary_values)):
-                    cell_label = ws.cell(row=summary_start_row + idx, column=summary_col_label, value=label)
-                    cell_value = ws.cell(row=summary_start_row + idx, column=summary_col_value, value=value)
+                    row_idx = summary_start_row + idx
+                    cell_label = ws.cell(row=row_idx, column=summary_col_label, value=label)
+                    cell_value = ws.cell(row=row_idx, column=summary_col_value, value=value)
                     cell_label.font = Font(bold=True)
-                    cell_label.alignment = Alignment(horizontal="left")
-                    cell_value.alignment = Alignment(horizontal="center")
+                    cell_label.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                    cell_label.alignment = Alignment(horizontal="left", vertical="center")
+                    cell_value.alignment = Alignment(horizontal="center", vertical="center")
 
                 # Auto-Breite
                 for col in ws.columns:
