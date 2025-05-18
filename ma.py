@@ -15,15 +15,15 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# Name aus 3+4 oder 6+7
+# ✅ Name aus 3+4 oder alternativ 6+7, robust gegen Nicht-Strings
 def extract_name(row):
-    if pd.notna(row[3]) and pd.notna(row[4]) and isinstance(row[3], str) and isinstance(row[4], str):
-        return f"{row[3].strip()} {row[4].strip()}"
-    elif pd.notna(row[6]) and pd.notna(row[7]) and isinstance(row[6], str) and isinstance(row[7], str):
-        return f"{row[6].strip()} {row[7].strip()}"
+    if pd.notna(row[3]) and pd.notna(row[4]):
+        return f"{str(row[3]).strip()} {str(row[4]).strip()}"
+    elif pd.notna(row[6]) and pd.notna(row[7]):
+        return f"{str(row[6]).strip()} {str(row[7]).strip()}"
     return None
 
-# KW + Jahr mit Sonntag als Wochenanfang
+# ✅ KW mit Sonntag als Wochenstart + korrektes Jahr
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
@@ -35,7 +35,7 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
-# ----------------- HAUPTLOGIK -----------------
+# ----------------- Streamlit Hauptteil -----------------
 if uploaded_files:
     all_data = []
     alle_namen = set()
@@ -59,12 +59,9 @@ if uploaded_files:
             st.error(f"Fehler beim Verarbeiten von {file.name}: {e}")
 
     if alle_namen:
-        # Sortiere nach Nachname alphabetisch
+        # Sortiere alphabetisch nach Nachname
         def sort_nachname(name):
-            try:
-                return name.split()[0].lower()
-            except:
-                return name.lower()
+            return name.split()[0].lower() if isinstance(name, str) else ""
 
         sorted_names = sorted(list(alle_namen), key=sort_nachname)
         selected_name = st.selectbox("Fahrer auswählen", sorted_names)
