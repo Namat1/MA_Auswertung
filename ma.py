@@ -4,16 +4,19 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – links & rechts getrennt")
+st.title("Tourenauswertung – beide Seiten, gefiltert per Fahrernamen")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
+fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth' oder 'harry')").strip().lower()
 
+# Wochentage Deutsch
 wochentage_deutsch = {
     "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
     "Thursday": "Donnerstag", "Friday": "Freitag",
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
+# KW mit Sonntag als Start
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
@@ -25,90 +28,109 @@ def get_kw_and_year_sunday_start(datum):
     except:
         return None, None
 
-def extract_both_names(row):
+def extract_entries_both_sides(row):
     eintraege = []
-    for side, (n_col, v_col) in zip(["links", "rechts"], [(3, 4), (6, 7)]):
-        if pd.notna(row[n_col]) and pd.notna(row[v_col]):
-            name = f"{str(row[n_col]).strip()} {str(row[v_col]).strip()}"
-            eintraege.append({
-                "Name": name,
-                "Datum": pd.to_datetime(row[14], errors='coerce'),
-                "Tour": row[15],
-                "Uhrzeit": row[8],
-                "LKW": row[11]
-            })
+
+    # Basisdaten
+    datum = pd.to_datetime(row[14], errors="coerce")
+    if pd.isna(datum):
+        return []
+
+    kw, jahr = get_kw_and_year_sunday_start(datum)
+    wochentag = datum.day_name()
+    wochentag_de = wochentage_deutsch.get(wochentag, wochentag)
+    datum_formatiert = datum.strftime('%d.%m.%Y')
+    datum_komplett = f"{wochentag_de}, {datum_formatiert}"
+
+    # Daten für links (3+4)
+    if pd.notna(row[3]) and pd.notna(row[4]):
+        name = f"{str(row[3]).strip()} {str(row[4]).strip()}"
+        eintraege.append({
+            "KW": kw,
+            "Jahr": jahr,
+            "Datum": datum_komplett,
+            "Name": name,
+            "Tour": row[15],
+            "Uhrzeit": row[8],
+            "LKW": row[11]
+        })
+
+    # Daten für rechts (6+7)
+    if pd.notna(row[6]) and pd.notna(row[7]):
+        name = f"{str(row[6]).strip()} {str(row[7]).strip()}"
+        eintraege.append({
+            "KW": kw,
+            "Jahr": jahr,
+            "Datum": datum_komplett,
+            "Name": name,
+            "Tour": row[15],
+            "Uhrzeit": row[8],
+            "LKW": row[11]
+        })
+
     return eintraege
 
+# Hauptlogik
 if uploaded_files:
-    result_rows = []
+    eintraege_gesamt = []
 
     for file in uploaded_files:
         try:
             df = pd.read_excel(file, sheet_name="Touren", header=None)
             df = df.iloc[5:].reset_index(drop=True)
 
+            # Für jede Zeile ggf. zwei Einträge erzeugen
             for _, row in df.iterrows():
-                eintraege = extract_both_names(row)
-                for eintrag in eintraege:
-                    eintrag["KW"], eintrag["Jahr"] = get_kw_and_year_sunday_start(eintrag["Datum"])
-                    result_rows.append(eintrag)
-
+                eintraege = extract_entries_both_sides(row)
+                eintraege_gesamt.extend(eintraege)
         except Exception as e:
-            st.error(f"Fehler in Datei {file.name}: {e}")
+            st.error(f"Fehler beim Verarbeiten von {file.name}: {e}")
 
-    if result_rows:
-        df_final = pd.DataFrame(result_rows)
-        df_final["Wochentag"] = df_final["Datum"].dt.day_name().map(wochentage_deutsch)
-        df_final["Datum_komplett"] = df_final["Wochentag"] + ", " + df_final["Datum"].dt.strftime('%d.%m.%Y')
+    if eintraege_gesamt:
+        df_final = pd.DataFrame(eintraege_gesamt)
 
-        df_export = df_final[["KW", "Jahr", "Datum_komplett", "Name", "Tour", "Uhrzeit", "LKW"]]
-        df_export.sort_values(by=["Jahr", "KW", "Datum_komplett"], inplace=True)
+        # Filter nach Fahrernamen (Teilwort, case-insensitive)
+        if fahrersuche:
+            df_final = df_final[df_final["Name"].str.lower().str.contains(fahrersuche)]
 
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            ws = writer.book.create_sheet(title="Alle_KWs")
-            writer.sheets["Alle_KWs"] = ws
-            start_row = 1
+        if df_final.empty:
+            st.warning("Keine Einträge für diesen Fahrer gefunden.")
+        else:
+            df_final.sort_values(by=["Jahr", "KW", "Datum"], inplace=True)
 
-            for (jahr, kw), group in df_export.groupby(["Jahr", "KW"]):
-                group = group.reset_index(drop=True)
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                sheet = "Touren"
+                ws = writer.book.create_sheet(title=sheet)
+                writer.sheets[sheet] = ws
 
-                ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
-                ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
-                cell = ws.cell(row=start_row, column=1)
-                cell.font = Font(bold=True, size=14)
-                cell.alignment = Alignment(horizontal="left")
-                cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
-                start_row += 1
+                start_row = 1
+                ws.append(["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"])
 
-                header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
-                for col_num, column_title in enumerate(header, 1):
-                    cell = ws.cell(row=start_row, column=col_num, value=column_title)
+                # Format Kopfzeile
+                for col_num in range(1, 8):
+                    cell = ws.cell(row=start_row, column=col_num)
                     cell.font = Font(bold=True)
                     cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                    cell.alignment = Alignment(horizontal="left")
                 start_row += 1
 
-                for row in group.itertuples(index=False):
-                    values = [row.KW, row.Jahr, row.Datum_komplett, row.Name, row.Tour, row.Uhrzeit, row.LKW]
-                    for col_num, value in enumerate(values, 1):
-                        cell = ws.cell(row=start_row, column=col_num, value=value)
-                        cell.alignment = Alignment(horizontal="left", vertical="center")
-                    start_row += 1
+                # Daten einfügen
+                for row in df_final.itertuples(index=False):
+                    ws.append([row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW])
 
-                start_row += 1
+                # Autobreite
+                for col in ws.columns:
+                    max_length = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    ws.column_dimensions[col_letter].width = int(max_length * 1.5)
 
-            for col in ws.columns:
-                max_length = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    if cell.value:
-                        max_length = max(max_length, len(str(cell.value)))
-                ws.column_dimensions[col_letter].width = int(max_length * 1.5)
-
-        output.seek(0)
-        st.success("Auswertung abgeschlossen.")
-        st.download_button("Ausgewertete Excel-Datei herunterladen",
-                           output,
-                           file_name="touren_alle_seiten.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            output.seek(0)
+            st.success("Auswertung abgeschlossen.")
+            st.download_button("Excel-Datei herunterladen",
+                               output,
+                               file_name=f"touren_auswertung.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
