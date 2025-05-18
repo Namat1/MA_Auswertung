@@ -152,7 +152,7 @@ if uploaded_files:
 
                     start_row += 1
 
-                # Rechte Auswertung
+                # Rechte Auswertung: Jahreswerte
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -160,9 +160,9 @@ if uploaded_files:
                 arbeit_count = df_final["Uhrzeit"].astype(str).apply(lambda x: x.strip() != "n. A.").sum()
                 summary_values = [krank_count, urlaub_count, arbeit_count, ausgleich_count]
 
-                summary_start_row = 2
                 summary_col_label = 9
                 summary_col_value = 10
+                summary_start_row = 2
 
                 for idx, (label, value) in enumerate(zip(summary_labels, summary_values)):
                     r = summary_start_row + idx
@@ -173,11 +173,11 @@ if uploaded_files:
                     label_cell.alignment = Alignment(horizontal="left", vertical="center")
                     value_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                # Tourenübersicht
-                next_row = summary_start_row + len(summary_labels) + 2
-                ws.cell(row=next_row, column=summary_col_label, value="Tourenübersicht:")
-                ws.cell(row=next_row, column=summary_col_label).font = Font(bold=True)
-                next_row += 1
+                # Tourenübersicht ab fixer Zeile
+                touren_start_row = 10 + len(summary_labels) + 2
+                ws.cell(row=touren_start_row, column=summary_col_label, value="Tourenübersicht:")
+                ws.cell(row=touren_start_row, column=summary_col_label).font = Font(bold=True)
+                touren_start_row += 1
 
                 touren_zaehler = (
                     df_final["Tour"]
@@ -189,9 +189,9 @@ if uploaded_files:
                 )
 
                 for tour, count in touren_zaehler.items():
-                    ws.cell(row=next_row, column=summary_col_label, value=tour)
-                    ws.cell(row=next_row, column=summary_col_value, value=f"{count}x")
-                    next_row += 1
+                    ws.cell(row=touren_start_row, column=summary_col_label, value=tour)
+                    ws.cell(row=touren_start_row, column=summary_col_value, value=f"{count}x")
+                    touren_start_row += 1
 
                 # Auto-Breite
                 for col in ws.columns:
