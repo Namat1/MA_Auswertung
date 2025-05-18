@@ -57,7 +57,6 @@ def format_uhrzeit(val):
             return val.strftime("%H:%M")
     except:
         return "n. A."
-
 def extract_entries_both_sides(row):
     eintraege = []
     datum = pd.to_datetime(row[14], errors="coerce")
@@ -102,7 +101,7 @@ if uploaded_files:
     if eintraege_gesamt:
         df_final = pd.DataFrame(eintraege_gesamt)
 
-        fahrersuche = st.text_input("Nach Namen suchen (z.\u202fB. 'm\u00fcller')").strip().lower()
+        fahrersuche = st.text_input("Nach Namen suchen (z. B. 'müller')").strip().lower()
         passende_namen = []
 
         if fahrersuche:
@@ -112,14 +111,13 @@ if uploaded_files:
             )
 
         if passende_namen:
-            ausgewaehlter_name = st.selectbox("Passenden Fahrer ausw\u00e4hlen", passende_namen)
+            ausgewaehlter_name = st.selectbox("Passenden Fahrer auswählen", passende_namen)
             df_final = df_final[df_final["Name"] == ausgewaehlter_name]
         else:
             df_final = df_final.iloc[0:0]
 
         if df_final.empty and fahrersuche and passende_namen:
-            st.warning("F\u00fcr diesen Fahrer wurden keine Touren gefunden.")
-
+            st.warning("Für diesen Fahrer wurden keine Touren gefunden.")
         if not df_final.empty:
             df_final.sort_values(by=["Jahr", "KW", "Datum_sortierbar"], inplace=True)
 
@@ -162,6 +160,73 @@ if uploaded_files:
                         start_row += 1
 
                     start_row += 1
+                # Rechte Auswertung mit „davon Samstag“
+                summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
+                krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
+                urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
+                ausgleich_count = df_final["Tour"].astype(str).str.lower().str.contains("ausgleich").sum()
+                arbeit_count = df_final["Uhrzeit"].astype(str).apply(lambda x: x.strip() != "n. A.").sum()
+                arbeit_samstag_count = df_final[
+                    (df_final["Uhrzeit"].astype(str).str.strip() != "n. A.") &
+                    (df_final["Datum"].astype(str).str.contains("Samstag"))
+                ].shape[0]
+
+                summary_values = [krank_count, urlaub_count, arbeit_count, ausgleich_count]
+                summary_col_label = 9
+                summary_col_value = 10
+                row_cursor = 2
+
+                for idx, label in enumerate(summary_labels):
+                    value = summary_values[idx]
+                    cell_label = ws.cell(row=row_cursor, column=summary_col_label, value=label)
+                    cell_value = ws.cell(row=row_cursor, column=summary_col_value, value=value)
+                    cell_label.font = Font(bold=True)
+                    cell_label.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                    cell_label.alignment = Alignment(horizontal="left", vertical="center")
+                    cell_value.alignment = Alignment(horizontal="center", vertical="center")
+                    cell_label.border = thin_border
+                    cell_value.border = thin_border
+                    row_cursor += 1
+
+                    if label == "Tage Arbeit":
+                        cell_label = ws.cell(row=row_cursor, column=summary_col_label, value="davon Samstag")
+                        cell_value = ws.cell(row=row_cursor, column=summary_col_value, value=arbeit_samstag_count)
+                        cell_label.font = Font(bold=True)
+                        cell_label.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                        cell_label.alignment = Alignment(horizontal="left", vertical="center")
+                        cell_value.alignment = Alignment(horizontal="center", vertical="center")
+                        cell_label.border = thin_border
+                        cell_value.border = thin_border
+                        row_cursor += 1
+
+                # Tourenübersicht (gefiltert)
+                row_cursor += 2
+                ws.cell(row=row_cursor, column=summary_col_label, value="Tourenübersicht:")
+                ws.cell(row=row_cursor, column=summary_col_label).font = Font(bold=True, size=12)
+                row_cursor += 1
+
+                touren_zaehler = (
+                    df_final["Tour"]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .loc[lambda s: ~s.str.lower().str.contains("krank|urlaub|ausgleich")]
+                    .value_counts()
+                    .sort_index()
+                )
+
+                for tour, count in touren_zaehler.items():
+                    cell_name = ws.cell(row=row_cursor, column=summary_col_label, value=tour)
+                    cell_count = ws.cell(row=row_cursor, column=summary_col_value, value=f"{count}x")
+                    cell_name.alignment = Alignment(horizontal="left", vertical="center")
+                    cell_count.alignment = Alignment(horizontal="center", vertical="center")
+                    cell_name.font = Font(bold=False)
+                    cell_count.font = Font(bold=True)
+                    cell_name.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                    cell_count.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                    cell_name.border = thin_border
+                    cell_count.border = thin_border
+                    row_cursor += 1
 
                 # Auto-Breite
                 for col in ws.columns:
