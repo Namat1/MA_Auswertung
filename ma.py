@@ -124,22 +124,38 @@ if uploaded_files:
                 writer.sheets[sheet] = ws
 
                 start_row = 1
-                header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
-                for col_num, column_title in enumerate(header, 1):
-                    cell = ws.cell(row=start_row, column=col_num, value=column_title)
-                    cell.font = Font(bold=True)
-                    cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-                    cell.alignment = Alignment(horizontal="left", vertical="center")
-                start_row += 1
+                for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
+                    group = group.reset_index(drop=True)
 
-                for row in df_final.itertuples(index=False):
-                    values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
-                    for col_num, value in enumerate(values, 1):
-                        cell = ws.cell(row=start_row, column=col_num, value=value)
+                    # KW-Zeile
+                    ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
+                    ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
+                    cell = ws.cell(row=start_row, column=1)
+                    cell.font = Font(bold=True, size=14)
+                    cell.alignment = Alignment(horizontal="left")
+                    cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                    start_row += 1
+
+                    # Kopfzeile
+                    header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
+                    for col_num, column_title in enumerate(header, 1):
+                        cell = ws.cell(row=start_row, column=col_num, value=column_title)
+                        cell.font = Font(bold=True)
+                        cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                # Jahresauswertung in separater Tabelle (rechts neben Haupttabelle)
+                    # Datenzeilen
+                    for row in group.itertuples(index=False):
+                        values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
+                        for col_num, value in enumerate(values, 1):
+                            cell = ws.cell(row=start_row, column=col_num, value=value)
+                            cell.alignment = Alignment(horizontal="left", vertical="center")
+                        start_row += 1
+
+                    start_row += 1  # Abstand zur nächsten Woche
+
+                # Jahresauswertung rechts neben den Tabellen (Spalte I)
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -147,19 +163,19 @@ if uploaded_files:
                 summary_values = [krank_count, urlaub_count, arbeit_count]
 
                 summary_start_row = 2
-                summary_col_label = 9  # Spalte I
-                summary_col_value = 10  # Spalte J
+                summary_col_label = 9
+                summary_col_value = 10
 
                 for idx, (label, value) in enumerate(zip(summary_labels, summary_values)):
-                    row_idx = summary_start_row + idx
-                    cell_label = ws.cell(row=row_idx, column=summary_col_label, value=label)
-                    cell_value = ws.cell(row=row_idx, column=summary_col_value, value=value)
-                    cell_label.font = Font(bold=True)
-                    cell_label.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
-                    cell_label.alignment = Alignment(horizontal="left", vertical="center")
-                    cell_value.alignment = Alignment(horizontal="center", vertical="center")
+                    r = summary_start_row + idx
+                    label_cell = ws.cell(row=r, column=summary_col_label, value=label)
+                    value_cell = ws.cell(row=r, column=summary_col_value, value=value)
+                    label_cell.font = Font(bold=True)
+                    label_cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                    label_cell.alignment = Alignment(horizontal="left", vertical="center")
+                    value_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                # Auto-Breite
+                # Spaltenbreiten anpassen
                 for col in ws.columns:
                     max_length = 0
                     col_letter = get_column_letter(col[0].column)
