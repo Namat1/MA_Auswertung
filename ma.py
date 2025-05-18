@@ -155,12 +155,13 @@ if uploaded_files:
 
                     start_row += 1  # Abstand zur nächsten Woche
 
-                # Jahresauswertung rechts neben den Tabellen (Spalte I)
-                summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit"]
+                # Jahresauswertung rechts neben der Tabelle (Spalte I)
+                summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
+                ausgleich_count = df_final["Tour"].astype(str).str.lower().str.contains("ausgleich").sum()
                 arbeit_count = df_final["Uhrzeit"].astype(str).apply(lambda x: x.strip() != "n. A.").sum()
-                summary_values = [krank_count, urlaub_count, arbeit_count]
+                summary_values = [krank_count, urlaub_count, arbeit_count, ausgleich_count]
 
                 summary_start_row = 2
                 summary_col_label = 9
@@ -175,7 +176,7 @@ if uploaded_files:
                     label_cell.alignment = Alignment(horizontal="left", vertical="center")
                     value_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-                # Spaltenbreiten anpassen
+                # Spaltenbreiten automatisch anpassen
                 for col in ws.columns:
                     max_length = 0
                     col_letter = get_column_letter(col[0].column)
