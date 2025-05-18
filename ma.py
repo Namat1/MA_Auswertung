@@ -23,13 +23,16 @@ def extract_name(row):
         return f"{row[6]} {row[7]}"
     return None
 
-# Sonntag als Start der Kalenderwoche
+# ✅ Korrekte KW-Berechnung mit Sonntag als Wochenbeginn
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
-        verschoben = dt - pd.DateOffset(days=(dt.weekday() + 1) % 7)
-        iso = verschoben.isocalendar()
-        return iso.week, iso.year
+        kw = int(dt.strftime("%U")) + 1  # %U: Sonntag als Wochenstart, +1 weil es bei 0 startet
+        jahr = dt.year
+        # Sonderfall: Anfang Januar mit hoher KW → eigentlich noch Vorjahr
+        if dt.month == 1 and kw >= 52:
+            jahr -= 1
+        return kw, jahr
     except:
         return None, None
 
@@ -78,7 +81,7 @@ if uploaded_files and name_query:
             for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                 group = group.reset_index(drop=True)
 
-                # 🛠️ Fix: int() für KW und Jahr, damit keine ".0" steht
+                # ✅ Kein .0 mehr, int() erzwingt Ganzzahlen
                 ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                 cell = ws.cell(row=start_row, column=1)
@@ -96,7 +99,7 @@ if uploaded_files and name_query:
                     cell.alignment = Alignment(horizontal="left", vertical="center")
                 start_row += 1
 
-                # Daten
+                # Datenzeilen
                 for row in group.itertuples(index=False):
                     values = [row.KW, row.Jahr, row.Datum_komplett, row.Name, row.Tour, row.Uhrzeit, row.LKW]
                     for col_num, value in enumerate(values, 1):
@@ -104,7 +107,7 @@ if uploaded_files and name_query:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                # Leere Zeile zwischen KW-Blöcken
+                # Leere Zeile zwischen KWs
                 start_row += 1
 
             # Autobreite auf 150 % Inhalt
