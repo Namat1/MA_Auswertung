@@ -4,19 +4,17 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – beide Seiten, gefiltert per Fahrernamen")
+st.title("Tourenauswertung – links & rechts getrennt, schön formatiert")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
-fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth' oder 'harry')").strip().lower()
+fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth')").strip().lower()
 
-# Wochentage Deutsch
 wochentage_deutsch = {
     "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
     "Thursday": "Donnerstag", "Friday": "Freitag",
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# KW mit Sonntag als Start
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
@@ -30,8 +28,6 @@ def get_kw_and_year_sunday_start(datum):
 
 def extract_entries_both_sides(row):
     eintraege = []
-
-    # Basisdaten
     datum = pd.to_datetime(row[14], errors="coerce")
     if pd.isna(datum):
         return []
@@ -42,35 +38,22 @@ def extract_entries_both_sides(row):
     datum_formatiert = datum.strftime('%d.%m.%Y')
     datum_komplett = f"{wochentag_de}, {datum_formatiert}"
 
-    # Daten für links (3+4)
     if pd.notna(row[3]) and pd.notna(row[4]):
         name = f"{str(row[3]).strip()} {str(row[4]).strip()}"
         eintraege.append({
-            "KW": kw,
-            "Jahr": jahr,
-            "Datum": datum_komplett,
-            "Name": name,
-            "Tour": row[15],
-            "Uhrzeit": row[8],
-            "LKW": row[11]
+            "KW": kw, "Jahr": jahr, "Datum": datum_komplett,
+            "Name": name, "Tour": row[15], "Uhrzeit": row[8], "LKW": row[11]
         })
 
-    # Daten für rechts (6+7)
     if pd.notna(row[6]) and pd.notna(row[7]):
         name = f"{str(row[6]).strip()} {str(row[7]).strip()}"
         eintraege.append({
-            "KW": kw,
-            "Jahr": jahr,
-            "Datum": datum_komplett,
-            "Name": name,
-            "Tour": row[15],
-            "Uhrzeit": row[8],
-            "LKW": row[11]
+            "KW": kw, "Jahr": jahr, "Datum": datum_komplett,
+            "Name": name, "Tour": row[15], "Uhrzeit": row[8], "LKW": row[11]
         })
 
     return eintraege
 
-# Hauptlogik
 if uploaded_files:
     eintraege_gesamt = []
 
@@ -78,23 +61,19 @@ if uploaded_files:
         try:
             df = pd.read_excel(file, sheet_name="Touren", header=None)
             df = df.iloc[5:].reset_index(drop=True)
-
-            # Für jede Zeile ggf. zwei Einträge erzeugen
             for _, row in df.iterrows():
-                eintraege = extract_entries_both_sides(row)
-                eintraege_gesamt.extend(eintraege)
+                eintraege_gesamt.extend(extract_entries_both_sides(row))
         except Exception as e:
             st.error(f"Fehler beim Verarbeiten von {file.name}: {e}")
 
     if eintraege_gesamt:
         df_final = pd.DataFrame(eintraege_gesamt)
 
-        # Filter nach Fahrernamen (Teilwort, case-insensitive)
         if fahrersuche:
             df_final = df_final[df_final["Name"].str.lower().str.contains(fahrersuche)]
 
         if df_final.empty:
-            st.warning("Keine Einträge für diesen Fahrer gefunden.")
+            st.warning("Kein Eintrag für diesen Fahrer.")
         else:
             df_final.sort_values(by=["Jahr", "KW", "Datum"], inplace=True)
 
@@ -105,19 +84,37 @@ if uploaded_files:
                 writer.sheets[sheet] = ws
 
                 start_row = 1
-                ws.append(["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"])
+                for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
+                    group = group.reset_index(drop=True)
 
-                # Format Kopfzeile
-                for col_num in range(1, 8):
-                    cell = ws.cell(row=start_row, column=col_num)
-                    cell.font = Font(bold=True)
-                    cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+                    # KW-Überschrift
+                    ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
+                    ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
+                    cell = ws.cell(row=start_row, column=1)
+                    cell.font = Font(bold=True, size=14)
                     cell.alignment = Alignment(horizontal="left")
-                start_row += 1
+                    cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                    start_row += 1
 
-                # Daten einfügen
-                for row in df_final.itertuples(index=False):
-                    ws.append([row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW])
+                    # Kopfzeile
+                    header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
+                    for col_num, column_title in enumerate(header, 1):
+                        cell = ws.cell(row=start_row, column=col_num, value=column_title)
+                        cell.font = Font(bold=True)
+                        cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+                    start_row += 1
+
+                    # Datenzeilen
+                    for row in group.itertuples(index=False):
+                        values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
+                        for col_num, value in enumerate(values, 1):
+                            cell = ws.cell(row=start_row, column=col_num, value=value)
+                            cell.alignment = Alignment(horizontal="left", vertical="center")
+                        start_row += 1
+
+                    # Leerzeile zwischen KWs
+                    start_row += 1
 
                 # Autobreite
                 for col in ws.columns:
@@ -132,5 +129,5 @@ if uploaded_files:
             st.success("Auswertung abgeschlossen.")
             st.download_button("Excel-Datei herunterladen",
                                output,
-                               file_name=f"touren_auswertung.xlsx",
+                               file_name="touren_auswertung.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
