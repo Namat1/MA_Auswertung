@@ -4,11 +4,17 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – nach Kalenderwoche, Name & Tour")
+st.title("Tourenauswertung – nach KW, Fahrername & Tour")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
-
 name_query = st.text_input("Gesuchten Fahrer eingeben (Teil von Vor- oder Nachname):")
+
+# Deutsche Wochentage manuell
+wochentage_deutsch = {
+    "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
+    "Thursday": "Donnerstag", "Friday": "Freitag",
+    "Saturday": "Samstag", "Sunday": "Sonntag"
+}
 
 def extract_name(row):
     if pd.notna(row[3]) and pd.notna(row[4]):
@@ -35,7 +41,7 @@ if uploaded_files and name_query:
             df["Name"] = df.apply(extract_name, axis=1)
             df["Datum"] = pd.to_datetime(df[14], errors='coerce')
             df["KW"] = df["Datum"].apply(get_kw)
-            df["Tour"] = df[0]
+            df["Tour"] = df[15]  # Tournummer ist in Spalte 15
             df["Uhrzeit"] = df[8]
             df["LKW"] = df[11]
 
@@ -50,13 +56,14 @@ if uploaded_files and name_query:
         result_df = pd.concat(all_data)
         result_df.sort_values(by=["KW", "Datum", "Name"], inplace=True)
 
-        # Datum deutsch + Wochentag
-        result_df["Wochentag"] = result_df["Datum"].dt.strftime('%A')
+        # Wochentag + deutsches Datumsformat
+        result_df["Wochentag"] = result_df["Datum"].dt.day_name().map(wochentage_deutsch)
         result_df["Datum_formatiert"] = result_df["Datum"].dt.strftime('%d.%m.%Y')
         result_df["Datum_komplett"] = result_df["Wochentag"] + ", " + result_df["Datum_formatiert"]
         result_df.drop(columns=["Datum", "Wochentag", "Datum_formatiert"], inplace=True)
         result_df = result_df[["KW", "Datum_komplett", "Name", "Tour", "Uhrzeit", "LKW"]]
 
+        # Excel-Ausgabe
         output = BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             sheet_name = "Alle_KWs"
@@ -67,7 +74,7 @@ if uploaded_files and name_query:
                 group = group.sort_values(by="Datum_komplett")
                 ws = writer.book.create_sheet(title=sheet_name) if writer.sheets == {} else writer.sheets[sheet_name]
 
-                # KW-Trennüberschrift
+                # KW-Titelzeile
                 ws.cell(row=start_row, column=1, value=f"KW {kw}")
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=6)
                 title_cell = ws.cell(row=start_row, column=1)
@@ -91,10 +98,10 @@ if uploaded_files and name_query:
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                     start_row += 1
 
-                # Leere Zeile zwischen KWs
+                # Leerzeile zwischen KW-Blöcken
                 start_row += 1
 
-            # Spaltenbreite anpassen
+            # Spaltenbreiten auf 150 % Inhalt
             for col in ws.columns:
                 max_length = 0
                 col_letter = get_column_letter(col[0].column)
