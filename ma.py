@@ -16,19 +16,19 @@ wochentage_deutsch = {
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
 
-# ✅ Name aus Spalte 3+4 oder (Fallback) 6+7
+# ✅ Name aus Spalte 5+4 oder 8+7 (Nachname = 5/8, Vorname = 4/7)
 def extract_name(row):
-    nachname = row[3] if pd.notna(row[3]) else row[6]
-    vorname  = row[4] if pd.notna(row[4]) else row[7]
+    vorname = row[4] if pd.notna(row[4]) else row[7]
+    nachname = row[5] if pd.notna(row[5]) else row[8]
     if pd.notna(nachname) and pd.notna(vorname):
         return f"{nachname} {vorname}"
     return None
 
-# ✅ Sonntag als Wochenbeginn + korrekte Jahreszuordnung
+# ✅ KW mit Sonntag als Wochenstart (%U) und korrektes Jahr
 def get_kw_and_year_sunday_start(datum):
     try:
         dt = pd.to_datetime(datum)
-        kw = int(dt.strftime("%U")) + 1  # %U = Sonntag als Wochenstart
+        kw = int(dt.strftime("%U")) + 1
         jahr = dt.year
         if dt.month == 1 and kw >= 52:
             jahr -= 1
@@ -42,7 +42,7 @@ if uploaded_files and name_query:
     for file in uploaded_files:
         try:
             df = pd.read_excel(file, sheet_name="Touren", header=None)
-            df = df.iloc[5:]  # Ab Zeile 6
+            df = df.iloc[5:]  # ab Zeile 6
             df = df.reset_index(drop=True)
 
             df["Name"] = df.apply(extract_name, axis=1)
@@ -68,7 +68,6 @@ if uploaded_files and name_query:
         result_df["Datum_formatiert"] = result_df["Datum"].dt.strftime('%d.%m.%Y')
         result_df["Datum_komplett"] = result_df["Wochentag"] + ", " + result_df["Datum_formatiert"]
 
-        # Finaler Export-DataFrame
         df_final = result_df[["KW", "Jahr", "Datum_komplett", "Name", "Tour", "Uhrzeit", "LKW"]]
 
         output = BytesIO()
@@ -81,7 +80,6 @@ if uploaded_files and name_query:
             for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                 group = group.reset_index(drop=True)
 
-                # Titelzeile
                 ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                 cell = ws.cell(row=start_row, column=1)
@@ -90,7 +88,6 @@ if uploaded_files and name_query:
                 cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
                 start_row += 1
 
-                # Spaltenüberschriften
                 header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
                 for col_num, column_title in enumerate(header, 1):
                     cell = ws.cell(row=start_row, column=col_num, value=column_title)
@@ -99,7 +96,6 @@ if uploaded_files and name_query:
                     cell.alignment = Alignment(horizontal="left", vertical="center")
                 start_row += 1
 
-                # Datenzeilen
                 for row in group.itertuples(index=False):
                     values = [row.KW, row.Jahr, row.Datum_komplett, row.Name, row.Tour, row.Uhrzeit, row.LKW]
                     for col_num, value in enumerate(values, 1):
@@ -107,10 +103,8 @@ if uploaded_files and name_query:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                # Leere Zeile zwischen den KWs
                 start_row += 1
 
-            # Autobreite
             for col in ws.columns:
                 max_length = 0
                 col_letter = get_column_letter(col[0].column)
