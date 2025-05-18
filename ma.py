@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 from io import BytesIO
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 st.title("Fahrerauswertung - Einzeln")
@@ -14,6 +14,14 @@ wochentage_deutsch = {
     "Thursday": "Donnerstag", "Friday": "Freitag",
     "Saturday": "Samstag", "Sunday": "Sonntag"
 }
+
+# Rahmenstil definieren
+thin_border = Border(
+    left=Side(style="thin"),
+    right=Side(style="thin"),
+    top=Side(style="thin"),
+    bottom=Side(style="thin")
+)
 
 def get_kw_and_year_sunday_start(datum):
     try:
@@ -141,6 +149,7 @@ if uploaded_files:
                         cell.font = Font(bold=True)
                         cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
                         cell.alignment = Alignment(horizontal="left", vertical="center")
+                        cell.border = thin_border
                     start_row += 1
 
                     for row in group.itertuples(index=False):
@@ -148,11 +157,12 @@ if uploaded_files:
                         for col_num, value in enumerate(values, 1):
                             cell = ws.cell(row=start_row, column=col_num, value=value)
                             cell.alignment = Alignment(horizontal="left", vertical="center")
+                            cell.border = thin_border
                         start_row += 1
 
                     start_row += 1
 
-                # Rechte Auswertung
+                # Rechte Auswertung: Tage-Zeilen
                 summary_labels = ["Tage Krank", "Tage Urlaub", "Tage Arbeit", "Tage Ausgleich"]
                 krank_count = df_final["Tour"].astype(str).str.lower().str.contains("krank").sum()
                 urlaub_count = df_final["Tour"].astype(str).str.lower().str.contains("urlaub").sum()
@@ -166,14 +176,16 @@ if uploaded_files:
 
                 for idx, (label, value) in enumerate(zip(summary_labels, summary_values)):
                     r = summary_start_row + idx
-                    label_cell = ws.cell(row=r, column=summary_col_label, value=label)
-                    value_cell = ws.cell(row=r, column=summary_col_value, value=value)
-                    label_cell.font = Font(bold=True)
-                    label_cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
-                    label_cell.alignment = Alignment(horizontal="left", vertical="center")
-                    value_cell.alignment = Alignment(horizontal="center", vertical="center")
+                    cell_label = ws.cell(row=r, column=summary_col_label, value=label)
+                    cell_value = ws.cell(row=r, column=summary_col_value, value=value)
+                    cell_label.font = Font(bold=True)
+                    cell_label.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+                    cell_label.alignment = Alignment(horizontal="left", vertical="center")
+                    cell_value.alignment = Alignment(horizontal="center", vertical="center")
+                    cell_label.border = thin_border
+                    cell_value.border = thin_border
 
-                # Tourenübersicht – schön formatiert & ohne Krank/Urlaub/Ausgleich
+                # Tourenübersicht (ohne Urlaub, Krank, Ausgleich)
                 touren_start_row = 10 + len(summary_labels) + 2
                 ws.cell(row=touren_start_row, column=summary_col_label, value="Tourenübersicht:")
                 ws.cell(row=touren_start_row, column=summary_col_label).font = Font(bold=True, size=12)
@@ -198,6 +210,8 @@ if uploaded_files:
                     cell_count.font = Font(bold=True)
                     cell_name.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
                     cell_count.fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                    cell_name.border = thin_border
+                    cell_count.border = thin_border
                     touren_start_row += 1
 
                 # Auto-Breite
