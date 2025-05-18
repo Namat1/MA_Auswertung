@@ -4,7 +4,7 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-st.title("Tourenauswertung – links & rechts getrennt, schön formatiert")
+st.title("Tourenauswertung – beide Seiten, sortiert nach Datum")
 
 uploaded_files = st.file_uploader("Excel-Dateien hochladen", type=["xlsx"], accept_multiple_files=True)
 fahrersuche = st.text_input("Fahrername eingeben (z. B. 'demuth')").strip().lower()
@@ -41,14 +41,14 @@ def extract_entries_both_sides(row):
     if pd.notna(row[3]) and pd.notna(row[4]):
         name = f"{str(row[3]).strip()} {str(row[4]).strip()}"
         eintraege.append({
-            "KW": kw, "Jahr": jahr, "Datum": datum_komplett,
+            "KW": kw, "Jahr": jahr, "Datum": datum_komplett, "Datum_sortierbar": datum,
             "Name": name, "Tour": row[15], "Uhrzeit": row[8], "LKW": row[11]
         })
 
     if pd.notna(row[6]) and pd.notna(row[7]):
         name = f"{str(row[6]).strip()} {str(row[7]).strip()}"
         eintraege.append({
-            "KW": kw, "Jahr": jahr, "Datum": datum_komplett,
+            "KW": kw, "Jahr": jahr, "Datum": datum_komplett, "Datum_sortierbar": datum,
             "Name": name, "Tour": row[15], "Uhrzeit": row[8], "LKW": row[11]
         })
 
@@ -75,7 +75,7 @@ if uploaded_files:
         if df_final.empty:
             st.warning("Kein Eintrag für diesen Fahrer.")
         else:
-            df_final.sort_values(by=["Jahr", "KW", "Datum"], inplace=True)
+            df_final.sort_values(by=["Jahr", "KW", "Datum_sortierbar"], inplace=True)
 
             output = BytesIO()
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -87,7 +87,6 @@ if uploaded_files:
                 for (jahr, kw), group in df_final.groupby(["Jahr", "KW"]):
                     group = group.reset_index(drop=True)
 
-                    # KW-Überschrift
                     ws.cell(row=start_row, column=1, value=f"KW {int(kw)} ({int(jahr)})")
                     ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=7)
                     cell = ws.cell(row=start_row, column=1)
@@ -96,7 +95,6 @@ if uploaded_files:
                     cell.fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
                     start_row += 1
 
-                    # Kopfzeile
                     header = ["KW", "Jahr", "Datum", "Name", "Tour", "Uhrzeit", "LKW"]
                     for col_num, column_title in enumerate(header, 1):
                         cell = ws.cell(row=start_row, column=col_num, value=column_title)
@@ -105,7 +103,6 @@ if uploaded_files:
                         cell.alignment = Alignment(horizontal="left", vertical="center")
                     start_row += 1
 
-                    # Datenzeilen
                     for row in group.itertuples(index=False):
                         values = [row.KW, row.Jahr, row.Datum, row.Name, row.Tour, row.Uhrzeit, row.LKW]
                         for col_num, value in enumerate(values, 1):
@@ -113,7 +110,6 @@ if uploaded_files:
                             cell.alignment = Alignment(horizontal="left", vertical="center")
                         start_row += 1
 
-                    # Leerzeile zwischen KWs
                     start_row += 1
 
                 # Autobreite
